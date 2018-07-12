@@ -1,0 +1,261 @@
+{
+	"info": {
+		"name": "ABAP Unit Collection",
+		"_postman_id": "e0ca03a9-661b-ce10-0ace-9df96b26cfe0",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "GetToken",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "a69e27e3-2b27-4595-ad7b-db1478522af3",
+						"type": "text/javascript",
+						"exec": [
+							"//Display variables",
+							"console.log(\"==========Environment Variables==========\");",
+							"for(var attr in environment) {",
+							" console.log(attr + \"=\" + environment[attr]);",
+							"}",
+							"console.log(\"==========Global Variables==========\");",
+							"for(var attr in globals) {",
+							"    console.log(attr + \"=\" + globals[attr]);",
+							"}",
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "3a8a19d9-4537-4dc4-8859-9c78679063c6",
+						"type": "text/javascript",
+						"exec": [
+							"if (tests[\"X-CSRF-Token is present\"] = responseHeaders.hasOwnProperty(\"x-csrf-token\")) {",
+							"    postman.setEnvironmentVariable(\"x-csrf-token\", postman.getResponseHeader(\"x-csrf-token\"));",
+							"} else {",
+							"    postman.setNextRequest(null);   ",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-CSRF-Token",
+						"value": "Fetch"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\n}"
+				},
+				"url": {
+					"raw": "{{protocol}}://{{host}}:{{port}}/sap/bc/adt/abapunit?sap-client={{client}}&sap-language=EN",
+					"protocol": "{{protocol}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"sap",
+						"bc",
+						"adt",
+						"abapunit"
+					],
+					"query": [
+						{
+							"key": "sap-client",
+							"value": "{{client}}",
+							"equals": true
+						},
+						{
+							"key": "sap-language",
+							"value": "EN",
+							"equals": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "RunABAPUnit",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "a8914588-f583-45a4-af49-a6d8392aca41",
+						"type": "text/javascript",
+						"exec": [
+							"var totalAlert = 0;",
+							"var programAlert = 0;",
+							"",
+							"function processAlert(alert, level) {",
+							"    var test_passed = true;",
+							"    if (alert.$.severity === \"critical\") {",
+							"        totalAlert++;",
+							"        programAlert++;",
+							"        test_passed = false;",
+							"    }",
+							"    //Print out error details",
+							"    if ((alert.details === undefined) || (alert.details.detail.$ === undefined)) {",
+							"        tests[\">>\" + alert.title ] = test_passed;",
+							"    } else {",
+							"        tests[\">>\" + alert.title + \": \" + alert.details.detail.$.text] = test_passed;",
+							"    } ",
+							"}",
+							"",
+							"function processAlerts(alerts, level) {",
+							"    if ((alerts.alert === undefined) || (alerts.alert === \"\")) return;",
+							"    if (alerts.alert.length === undefined) {",
+							"        processAlert(alerts.alert);",
+							"    } else {",
+							"        alerts.alert.forEach(function (alert, index, level) {",
+							"            processAlert(alert, level);",
+							"        });",
+							"    }",
+							"}",
+							"",
+							"function processNextNodes(node, level) {",
+							"    if (node.testClasses !== undefined) {",
+							"        processNodes(node.testClasses.testClass, ++level);",
+							"        tests[\"No critical alert for \" + node.$[\"adtcore:packageName\"] + \"/\" + node.$[\"adtcore:type\"] + \"/\" + node.$[\"adtcore:name\"] + \" [Actual=\" + programAlert + \"]\"] = programAlert === 0;",
+							"        programAlert = 0;",
+							"    } else if (node.testMethods !== undefined) {",
+							"        processNodes(node.testMethods.testMethod, ++level);",
+							"    }",
+							"}",
+							"",
+							"function processNodes(node, level) {",
+							"    if (node === undefined) return;",
+							"    if (node.length === undefined) {",
+							"        processAlerts(node.alerts, level);",
+							"        processNextNodes(node, level);",
+							"    } else {",
+							"        node.forEach(function (node, index) {",
+							"            processAlerts(node.alerts, level);",
+							"            processNextNodes(node, level);",
+							"        });",
+							"    }",
+							"}",
+							"",
+							"if (tests[\"Status code is 200\"] = responseCode.code === 200) {",
+								"    var jsonObject = xml2Json(responseBody);",
+								"",
+								"    if (jsonObject[\"aunit:runResult\"].alerts === \"\") {",
+								"        processNodes(jsonObject[\"aunit:runResult\"].program, 0);",
+								"    } else {",
+								"        processAlerts(jsonObject[\"aunit:runResult\"].alerts, 0);",
+								"    }",
+								"    ",
+								"    if (tests[\"Job finished successfully\"] = totalAlert === 0) {",
+								"        //Everythings okay, nothing to do",
+								"        postman.setNextRequest(null);",
+								"    } else {",
+								"        tests[\"ABAP Unit failed. The remaining steps are skipped...\"] = true;",
+								"        postman.setNextRequest(null);",
+								"    }",
+								"}"
+							]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-CSRF-Token",
+						"value": "{{x-csrf-token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/xml"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<aunit:runConfiguration xmlns:aunit=\"http://www.sap.com/adt/aunit\">\r\n\t<external>\r\n\t\t<coverage active=\"false\"/>\r\n\t</external>\r\n\t<adtcore:objectSets xmlns:adtcore=\"http://www.sap.com/adt/core\">\r\n\t\t<objectSet kind=\"inclusive\">\r\n\t\t\t<adtcore:objectReferences>\r\n\t\t\t\t<adtcore:objectReference adtcore:uri=\"/sap/bc/adt/vit/wb/object_type/devck/object_name/{{package}}\"/>\r\n\t\t\t</adtcore:objectReferences>\r\n\t\t</objectSet>\r\n\t</adtcore:objectSets>\r\n</aunit:runConfiguration>"
+				},
+				"url": {
+					"raw": "{{protocol}}://{{host}}:{{port}}/sap/bc/adt/abapunit/testruns?sap-client={{client}}&sap-language=EN",
+					"protocol": "{{protocol}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"sap",
+						"bc",
+						"adt",
+						"abapunit",
+						"testruns"
+					],
+					"query": [
+						{
+							"key": "sap-client",
+							"value": "{{client}}",
+							"equals": true
+						},
+						{
+							"key": "sap-language",
+							"value": "EN",
+							"equals": true
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "username",
+				"value": "{{username}}",
+				"type": "string"
+			},
+			{
+				"key": "password",
+				"value": "{{password}}",
+				"type": "string"
+			},
+			{
+				"key": "saveHelperData",
+				"type": "any"
+			},
+			{
+				"key": "showPassword",
+				"value": false,
+				"type": "boolean"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "84dde635-c594-44a2-b8b5-75771c19d236",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "c5f9fce9-68f9-45df-8887-c2237f86c26f",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

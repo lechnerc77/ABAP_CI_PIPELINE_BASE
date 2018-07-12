@@ -1,0 +1,415 @@
+{
+	"info": {
+		"name": "ABAP ATC",
+		"_postman_id": "fbd8d31b-8cc8-8917-5cb8-d97991cde2cf",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "GetToken",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "c4f2beec-5943-442e-b0aa-2a29e375e4e9",
+						"type": "text/javascript",
+						"exec": [
+							"//Display variables",
+							"console.log(\"==========Environment Variables==========\");",
+							"for(var attr in environment) {",
+							" if (attr != 'password'){ ", 
+							" console.log(attr + \"=\" + environment[attr]);",
+							"}",
+							"}",
+								"console.log(\"==========Global Variables==========\");",
+							"for(var attr in globals) {",
+							"    console.log(attr + \"=\" + globals[attr]);",
+							"}",
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "44123904-0ed3-415a-96a5-c681c4fc9aa9",
+						"type": "text/javascript",
+						"exec": [
+							"if (tests[\"X-CSRF-Token is present\"] = responseHeaders.hasOwnProperty(\"x-csrf-token\")) {",
+							"    postman.setEnvironmentVariable(\"x-csrf-token\", postman.getResponseHeader(\"x-csrf-token\"));",
+							"} else {",
+							"    postman.setNextRequest(null);   ",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-CSRF-Token",
+						"value": "Fetch"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\n}"
+				},
+				"url": {
+					"raw": "{{protocol}}://{{host}}:{{port}}/sap/bc/adt/atc/worklists?sap-client={{client}}&sap-language=EN",
+					"protocol": "{{protocol}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"sap",
+						"bc",
+						"adt",
+						"atc",
+						"worklists"
+					],
+					"query": [
+						{
+							"key": "sap-client",
+							"value": "{{client}}",
+							"equals": true
+						},
+						{
+							"key": "sap-language",
+							"value": "EN",
+							"equals": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CreateWorklist",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"if (tests[\"Status code is 200\"] = responseCode.code === 200) {",
+							"    var worklistID = responseBody;",
+							"    tests[\"Worklist ID \" + worklistID ] = true;",
+							"    postman.setGlobalVariable(\"worklist_id\", worklistID);   ",
+							"} else {",
+							"    tests[\"Worklist creation failed, skipping ATC...\"] = true;",
+							"    postman.setNextRequest(null);",
+							"}",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-CSRF-Token",
+						"value": "{{x-csrf-token}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{protocol}}://{{host}}:{{port}}/sap/bc/adt/atc/worklists?checkVariant={{atc_variant}}&sap-client={{client}}&sap-language=EN",
+					"protocol": "{{protocol}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"sap",
+						"bc",
+						"adt",
+						"atc",
+						"worklists"
+					],
+					"query": [
+						{
+							"key": "checkVariant",
+							"value": "{{atc_variant}}",
+							"equals": true
+						},
+						{
+							"key": "sap-client",
+							"value": "{{client}}",
+							"equals": true
+						},
+						{
+							"key": "sap-language",
+							"value": "EN",
+							"equals": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "RunATC",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"const statText = \"FINDING_STATS\";",
+							"const failText = \"TOOL_FAILURE\";",
+							"",
+							"function getFailInfo(info) {",
+							"    if (info === undefined) return;",
+							"    if (info.length === undefined ) {",
+							"        if (info[\"atcinfo:type\"] === failText) return info[\"atcinfo:description\"];",
+							"    } else {",
+							"        var stat = info.find(item => item[\"atcinfo:type\"] === failText);",
+							"        if (stat !== undefined) {",
+							"            return stat[\"atcinfo:description\"];",
+							"        }",
+							"    }",
+							"    return \"\";",
+							"}",
+							"",
+							"function getStatInfo(info) {",
+							"    if (info === undefined) return;",
+							"    if (info.length === undefined ) {",
+							"        if (info[\"atcinfo:type\"] === statText) return info[\"atcinfo:description\"];",
+							"    } else {",
+							"        var stat = info.find(item => item[\"atcinfo:type\"] === statText);",
+							"        if (stat !== undefined) {",
+							"            return stat[\"atcinfo:description\"];",
+							"        }",
+							"    }",
+							"    return \"\";",
+							"}",
+							"",
+							"if (tests[\"Status code is 200\"] = responseCode.code === 200) {",
+							"    var jsonObject = xml2Json(responseBody);",
+							"    ",
+							"    var fail = getFailInfo(jsonObject[\"atcworklist:worklistRun\"][\"atcworklist:infos\"][\"atcinfo:info\"]);",
+							"    var stat = getStatInfo(jsonObject[\"atcworklist:worklistRun\"][\"atcworklist:infos\"][\"atcinfo:info\"]);",
+							"    ",
+							"    if ((fail !== undefined) && (fail !== \"\")) {",
+							"        tests[fail] = false;",
+							"        postman.setNextRequest(null);",
+							"    } else {",
+							"        if ((stat !== undefined) && (stat !== \"\")) {",
+							"            totalError = statSegments = stat.split(\",\")[0];",
+							"            totalWarning = statSegments = stat.split(\",\")[1];",
+							"            tests[\"No error found [Actual=\" + stat + \"]\"] = totalError === \"0\";",
+							"            ",
+							"            if ((totalError === \"0\") && (totalWarning === \"0\")) {",
+							"                postman.setNextRequest(null);",
+							"            }",
+							"        } else {",
+							"            tests[\"No result statistics found. The remaining steps are skipped...\"] = true;",
+							"            postman.setNextRequest(null);",
+							"        }",
+							"    }",
+							"}",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-CSRF-Token",
+						"value": "{{x-csrf-token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/xml"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<atc:run xmlns:atc=\"http://www.sap.com/adt/atc\" maximumVerdicts=\"100\">\r\n  <objectSets xmlns:adtcore=\"http://www.sap.com/adt/core\">\r\n    <objectSet kind=\"inclusive\">\r\n      <adtcore:objectReferences>\r\n        <adtcore:objectReference adtcore:uri=\"/sap/bc/adt/vit/wb/object_type/devck/object_name/{{package}}\"/>\r\n      </adtcore:objectReferences>\r\n    </objectSet>\r\n  </objectSets>\r\n</atc:run>\r\n"
+				},
+				"url": {
+					"raw": "{{protocol}}://{{host}}:{{port}}/sap/bc/adt/atc/runs?worklistId={{worklist_id}}&sap-client={{client}}&sap-language=EN",
+					"protocol": "{{protocol}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"sap",
+						"bc",
+						"adt",
+						"atc",
+						"runs"
+					],
+					"query": [
+						{
+							"key": "worklistId",
+							"value": "{{worklist_id}}",
+							"equals": true
+						},
+						{
+							"key": "sap-client",
+							"value": "{{client}}",
+							"equals": true
+						},
+						{
+							"key": "sap-language",
+							"value": "EN",
+							"equals": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetATCResult",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"",
+							"function displayFinding(finding, attr) {",
+							"    var priority = finding.$[\"atcfinding:priority\"];",
+							"    if (priority === \"1\") { //Error",
+							"        tests[\"ERROR: \" + finding.$[\"atcfinding:checkTitle\"] + \": \" + attr[\"adtcore:packageName\"] + \"/\" + attr[\"adtcore:type\"] + \"/\" + attr[\"adtcore:name\"] + \" by \" + attr[\"atcobject:author:author\"]] = false;",
+							"    } else if (priority === \"2\") {  //Warning",
+							"        tests[\"WARNING: \" + finding.$[\"atcfinding:checkTitle\"] + \": \" + attr[\"adtcore:packageName\"] + \"/\" + attr[\"adtcore:type\"] + \"/\" + attr[\"adtcore:name\"] + \" by \" + attr[\"atcobject:author:author\"]] = true;",
+							"    }",
+							"}",
+							"",
+							"function processFinding(finding, attr) {",
+							"    if (finding === undefined) return;",
+							"    if (finding.length === undefined) {",
+							"        displayFinding(finding, attr);",
+							"    } else {",
+							"        finding.forEach(function (finding) {",
+							"            displayFinding(finding, attr);",
+							"        });",
+							"    }",
+							"}",
+							"",
+							"function processObject(object) {",
+							"    if (object === undefined) return;",
+							"    if (object.length === undefined) {",
+							"        processFinding(object[\"atcobject:findings\"][\"atcfinding:finding\"], object.$);",
+							"    } else {",
+							"        object.forEach(function (object) {",
+							"            processFinding(object[\"atcobject:findings\"][\"atcfinding:finding\"], object.$);",
+							"        });",
+							"    }",
+							"}",
+							"",
+							"if (tests[\"Status code is 200\"] = responseCode.code === 200) {",
+							"    var jsonObject = xml2Json(responseBody);",
+							"    ",
+							"    processObject(jsonObject[\"atcworklist:worklist\"][\"atcworklist:objects\"][\"atcobject:object\"]);",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-CSRF-Token",
+						"value": "{{x-csrf-token}}"
+					}
+				],
+				"body": {},
+				"url": {
+					"raw": "{{protocol}}://{{host}}:{{port}}/sap/bc/adt/atc/worklists/{{worklist_id}}?includeExemptedFindings=false&sap-client={{client}}&sap-language=EN",
+					"protocol": "{{protocol}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"sap",
+						"bc",
+						"adt",
+						"atc",
+						"worklists",
+						"{{worklist_id}}"
+					],
+					"query": [
+						{
+							"key": "includeExemptedFindings",
+							"value": "false",
+							"equals": true
+						},
+						{
+							"key": "sap-client",
+							"value": "{{client}}",
+							"equals": true
+						},
+						{
+							"key": "sap-language",
+							"value": "EN",
+							"equals": true
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "{{password}}",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "{{username}}",
+				"type": "string"
+			},
+			{
+				"key": "saveHelperData",
+				"type": "any"
+			},
+			{
+				"key": "showPassword",
+				"value": false,
+				"type": "boolean"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "ebde6e7e-2334-46b8-b842-10e51b26d905",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "87f694c9-7aad-4a10-90e3-cb45894fa4e8",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
