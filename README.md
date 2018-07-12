@@ -20,7 +20,7 @@ The scenario in scope is:
 *Remark - Storage of credentials*: as common practise do **not** store you credentials in any of the files mentioned above. The temapltes in this repository assume that the passwords are stored in the Jenkins credendtials store and injected into the scripts in a secure manner.
 
 The workflow is also depicted here:
-![flow](https://github.com/lechnerc77/ABAP_CI_PIPELINE_BASE/img/Pipeline_Schema.jpg)
+![CI Workflow](https://github.com/lechnerc77/ABAP_CI_PIPELINE_BASE/blob/master/img/Pipeline_Schema.jpg?raw=true)
 
 *Please be aware that this workflow will not replace the SAP transport management!*
 
